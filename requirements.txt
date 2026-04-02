@@ -1,0 +1,8 @@
+# installing necessary packages in my_env
+youtube-transcript-api==0.6.2
+faiss-cpu==1.8.0
+langchain==0.2.6 
+langchain-community==0.2.6 
+ibm-watsonx-ai==1.0.10 
+langchain_ibm==0.1.8 
+gradio==4.44.1
