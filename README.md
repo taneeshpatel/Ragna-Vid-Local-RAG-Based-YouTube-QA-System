@@ -156,10 +156,6 @@ RAG QA: A question is embedded and the most relevant chunks are retrieved. Then,
 
 ---
 
-## 📜 License
 
-This project is licensed under MIT. Use responsibly.
+Made with 💙 by Taneesh Patel
 
----
-
-Made with 💙 by Yajuvendrasinh Chudasama
