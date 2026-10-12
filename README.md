@@ -39,8 +39,8 @@ Built using:
 ## 📦 Installation
 
 ```bash
-git clone https://github.com/Gtest111/Ragna-Vid
-cd youtube-rag-qa
+git clone https://github.com/taneeshpatel/Ragna-Vid-Local-RAG-Based-YouTube-QA-System.git
+cd Ragna-Vid-Local-RAG-Based-YouTube-QA-System
 
 # Create and activate virtual environment
 python -m venv venv
@@ -156,6 +156,10 @@ RAG QA: A question is embedded and the most relevant chunks are retrieved. Then,
 
 ---
 
+## 📜 License
 
-Made with 💙 by Taneesh Patel
+This project is licensed under MIT. Use responsibly.
 
+---
+
+Made with 💙 by Yajuvendrasinh Chudasama

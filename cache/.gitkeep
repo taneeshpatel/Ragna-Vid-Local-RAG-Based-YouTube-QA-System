@@ -1,0 +1,2 @@
+# Keep cache directory in version control.
+# Generated audio, transcripts, and FAISS indices are stored here at runtime.

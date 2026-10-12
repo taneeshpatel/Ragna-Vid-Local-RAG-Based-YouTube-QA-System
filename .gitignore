@@ -1,3 +1,62 @@
-venv
-.vscode
-__pycache__
+# Virtual Environments
+venv/
+env/
+env_gpu/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Python cache & compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Large model weights (Mistral GGUF, Whisper, Hugging Face checkpoints)
+models/*
+!models/.gitkeep
+*.gguf
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.onnx
+
+# Cache & runtime outputs
+cache/*
+!cache/.gitkeep
+*.index
+*.pkl
+
+# Secrets and environment configs
+.env
+.env.*
+!.env.example
+
+# Editor & OS files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+Desktop.ini

@@ -119,7 +119,7 @@ from chunking.chunker import chunk_text
 from embeddings.embedder import embed_chunks
 from vectorstore.vector_index import build_faiss_index, save_faiss_index
 from rag.retriever import retrieve_relevant_chunks
-from rag.qa_engine import generate_answer
+from rag.qa_engine import generate_answer, generate_answer_stream
 
 
 def get_hash_from_url(url: str) -> str:
@@ -131,30 +131,30 @@ def get_transcript_path(youtube_url: str, cache_dir: str = "cache") -> str:
     return os.path.join(cache_dir, f"{video_hash}_transcript.txt")
 
 
-def run_pipeline(
-    youtube_url: str,
-    question: str,
-    model_path: str = "models/mistral-7b-instruct-v0.1.Q4_K_M.gguf",
-    temperature: float = 0.3,
-    cache_dir: str = "cache"
-) -> tuple[str, str]:
+def prepare_video(youtube_url: str, cache_dir: str = "cache", status_callback=None) -> tuple[bool, str, str]:
+    """
+    Ensures video audio is downloaded, transcribed, chunked, and indexed in FAISS.
+    Returns (success, video_hash, transcript).
+    """
     video_hash = get_hash_from_url(youtube_url)
-
-    # Define file paths
     audio_path = os.path.join(cache_dir, "audio", f"{video_hash}.mp3")
     transcript_path = os.path.join(cache_dir, f"{video_hash}_transcript.txt")
     chunks_path = os.path.join(cache_dir, f"{video_hash}_chunks.txt")
     index_path = os.path.join(cache_dir, f"{video_hash}_faiss_index")
 
-    # Step 1: Download audio if not exists
+    # Step 1: Download audio
     if not os.path.exists(audio_path):
+        if status_callback:
+            status_callback("⬇️ Downloading video audio...")
         os.makedirs(os.path.dirname(audio_path), exist_ok=True)
-        audio_path = download_audio(youtube_url)
+        audio_path = download_audio(youtube_url, cache_dir=os.path.join(cache_dir, "audio"))
         if not audio_path:
-            return "❌ Failed to download audio.", ""
+            return False, video_hash, ""
 
     # Step 2: Transcription
     if not os.path.exists(transcript_path):
+        if status_callback:
+            status_callback("🎙️ Transcribing audio with Whisper...")
         transcript = transcribe_audio(audio_path)
         with open(transcript_path, "w", encoding="utf-8") as f:
             f.write(transcript)
@@ -164,6 +164,8 @@ def run_pipeline(
 
     # Step 3: Chunking
     if not os.path.exists(chunks_path):
+        if status_callback:
+            status_callback("✂️ Chunking transcript...")
         chunks = chunk_text(transcript, max_words=200)
         with open(chunks_path, "w", encoding="utf-8") as f:
             for i, chunk in enumerate(chunks):
@@ -171,19 +173,47 @@ def run_pipeline(
     else:
         with open(chunks_path, "r", encoding="utf-8") as f:
             raw_chunks = f.read().split("[Chunk ")[1:]
-            chunks = [chunk.split("]", 1)[1].strip() for chunk in raw_chunks]
+            chunks = [chunk.split("]", 1)[1].strip() for chunk in raw_chunks if "]" in chunk]
 
-    # Step 4: Embedding + FAISS
-    if not os.path.exists(index_path + ".index") or not os.path.exists(index_path + "_chunks.pkl"):
+    # Step 4: Embedding + FAISS Index
+    if not (os.path.exists(index_path + ".index") and os.path.exists(index_path + "_chunks.pkl")):
+        if status_callback:
+            status_callback("🔍 Generating semantic embeddings and building FAISS index...")
         embeddings = embed_chunks(chunks)
         index = build_faiss_index(embeddings)
         save_faiss_index(index_path, index, chunks)
 
-    # Step 5: Retrieve relevant chunks
-    relevant_chunks = retrieve_relevant_chunks(question, top_k=3, index_path=index_path)
+    return True, video_hash, transcript
+
+
+def query_video_stream(
+    question: str,
+    video_hash: str,
+    model_path: str = "models/mistral-7b-instruct-v0.1.Q4_K_M.gguf",
+    temperature: float = 0.3,
+    top_k: int = 4,
+    cache_dir: str = "cache"
+):
+    """Retrieves relevant chunks and streams LLM answer tokens."""
+    index_path = os.path.join(cache_dir, f"{video_hash}_faiss_index")
+    relevant_chunks = retrieve_relevant_chunks(question, top_k=top_k, index_path=index_path)
     context = "\n\n".join(relevant_chunks)
+    return generate_answer_stream(context, question, model_path=model_path, temperature=temperature)
 
-    # Step 6: Answer generation
+
+def run_pipeline(
+    youtube_url: str,
+    question: str,
+    model_path: str = "models/mistral-7b-instruct-v0.1.Q4_K_M.gguf",
+    temperature: float = 0.3,
+    cache_dir: str = "cache"
+) -> tuple[str, str]:
+    success, video_hash, transcript = prepare_video(youtube_url, cache_dir=cache_dir)
+    if not success:
+        return "❌ Failed to process or download video audio.", ""
+
+    index_path = os.path.join(cache_dir, f"{video_hash}_faiss_index")
+    relevant_chunks = retrieve_relevant_chunks(question, top_k=4, index_path=index_path)
+    context = "\n\n".join(relevant_chunks)
     answer = generate_answer(context, question, model_path=model_path, temperature=temperature)
-
     return answer, transcript
